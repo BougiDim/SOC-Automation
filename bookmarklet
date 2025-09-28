@@ -7,12 +7,32 @@ javascript:(function(){
     if (!selection) return;
 
     // URL to your JSON "encyclopedia"
-    var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/refs/heads/main/info-database";
+    var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/main/info-database";
 
     fetch(dataURL)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
-            var answer = data[selection];
+            var key = selection;
+
+            var digits = selection.match(/\d+/);
+            if (digits && digits.length) {
+                key = digits[0];
+            }
+
+            if (!data[key]) {
+                var lowerSelection = selection.toLowerCase();
+                var match = Object.keys(data).find(k => k.toLowerCase() === lowerSelection);
+                if (match) {
+                    key = match;
+                }
+            }
+
+            var answer = data[key];
             if (!answer) {
                 answer = "No entry found for: " + selection;
             }
@@ -34,6 +54,7 @@ javascript:(function(){
             // Close on click
             div.onclick = function(){ div.remove(); };
             document.body.appendChild(div);
+            setTimeout(function(){ div.remove(); }, 10000);
         })
         .catch(err => alert("Error fetching dictionary: " + err));
 })();
