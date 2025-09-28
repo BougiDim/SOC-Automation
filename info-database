@@ -1,0 +1,7 @@
+{
+    "4624": "An account was successfully logged on.",
+    "4625": "An account failed to log on.",
+    "4634": "An account was logged off.",
+    "4648": "A logon was attempted using explicit credentials.",
+    "4688": "A new process has been created."
+}
