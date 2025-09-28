@@ -1,12 +1,10 @@
 javascript:(function(){
-    // Grab highlighted text or ask
     var selection = window.getSelection().toString().trim();
     if (!selection) {
         selection = prompt("Enter lookup value (e.g. Event ID 4624):");
     }
     if (!selection) return;
 
-    // URL to your JSON "encyclopedia"
     var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/main/info-database";
 
     fetch(dataURL)
@@ -36,7 +34,6 @@ javascript:(function(){
             if (!answer) {
                 answer = "No entry found for: " + selection;
             }
-            // Fancy popup
             var div = document.createElement("div");
             div.style.position = "fixed";
             div.style.top = "10%";
@@ -51,7 +48,6 @@ javascript:(function(){
             div.style.fontFamily = "monospace";
             div.innerText = selection + " → " + answer;
 
-            // Close on click
             div.onclick = function(){ div.remove(); };
             document.body.appendChild(div);
             setTimeout(function(){ div.remove(); }, 10000);
