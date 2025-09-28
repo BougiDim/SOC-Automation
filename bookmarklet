@@ -1,60 +1,74 @@
-javascript:(function(){
-    // Grab highlighted text or ask
-    var selection = window.getSelection().toString().trim();
-    if (!selection) {
-        selection = prompt("Enter lookup value (e.g. Event ID 4624):");
+javascript:(async function(){
+    try {
+        var selection = window.getSelection().toString().trim();
+        if (!selection) {
+            selection = prompt("Enter lookup value (e.g. Event ID 4624):");
+        }
+        if (!selection) {
+            return;
+        }
+
+        var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/main/info-database";
+
+        var response = await fetch(dataURL, {
+            cache: "no-cache"
+        });
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+
+        var data = await response.json();
+
+        var key = selection;
+        var digits = selection.match(/\d+/);
+        if (digits && digits.length) {
+            key = digits[0];
+        }
+
+        if (!data[key]) {
+            var lowerSelection = selection.toLowerCase();
+            var match = Object.keys(data).find(function(k){
+                return k.toLowerCase() === lowerSelection;
+            });
+            if (match) {
+                key = match;
+            }
+        }
+
+        var answer = data[key];
+        if (!answer) {
+            answer = "No entry found for: " + selection;
+        }
+
+        var existing = document.getElementById("soc-lookup-popup");
+        if (existing) {
+            existing.remove();
+        }
+
+        var div = document.createElement("div");
+        div.id = "soc-lookup-popup";
+        div.style.position = "fixed";
+        div.style.top = "10%";
+        div.style.left = "50%";
+        div.style.transform = "translateX(-50%)";
+        div.style.background = "#1e1e1e";
+        div.style.color = "#fff";
+        div.style.padding = "15px";
+        div.style.border = "2px solid #888";
+        div.style.borderRadius = "8px";
+        div.style.zIndex = 2147483647;
+        div.style.fontFamily = "monospace";
+        div.style.maxWidth = "80vw";
+        div.style.wordBreak = "break-word";
+        div.style.boxShadow = "0 6px 18px rgba(0,0,0,0.4)";
+        div.innerText = selection + " → " + answer;
+        div.title = "Click to dismiss";
+
+        div.onclick = function(){ div.remove(); };
+        document.body.appendChild(div);
+        setTimeout(function(){ if (div.parentNode) { div.remove(); } }, 10000);
+    } catch (err) {
+        console.error("SOC lookup bookmarklet error", err);
+        alert("Error fetching dictionary: " + err.message);
     }
-    if (!selection) return;
-
-    // URL to your JSON "encyclopedia"
-    var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/main/info-database";
-
-    fetch(dataURL)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP " + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            var key = selection;
-
-            var digits = selection.match(/\d+/);
-            if (digits && digits.length) {
-                key = digits[0];
-            }
-
-            if (!data[key]) {
-                var lowerSelection = selection.toLowerCase();
-                var match = Object.keys(data).find(k => k.toLowerCase() === lowerSelection);
-                if (match) {
-                    key = match;
-                }
-            }
-
-            var answer = data[key];
-            if (!answer) {
-                answer = "No entry found for: " + selection;
-            }
-            // Fancy popup
-            var div = document.createElement("div");
-            div.style.position = "fixed";
-            div.style.top = "10%";
-            div.style.left = "50%";
-            div.style.transform = "translateX(-50%)";
-            div.style.background = "#1e1e1e";
-            div.style.color = "#fff";
-            div.style.padding = "15px";
-            div.style.border = "2px solid #888";
-            div.style.borderRadius = "8px";
-            div.style.zIndex = 9999;
-            div.style.fontFamily = "monospace";
-            div.innerText = selection + " → " + answer;
-
-            // Close on click
-            div.onclick = function(){ div.remove(); };
-            document.body.appendChild(div);
-            setTimeout(function(){ div.remove(); }, 10000);
-        })
-        .catch(err => alert("Error fetching dictionary: " + err));
 })();
