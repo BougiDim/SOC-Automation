@@ -1,74 +1,82 @@
-javascript:(async function(){
-    try {
-        var selection = window.getSelection().toString().trim();
-        if (!selection) {
-            selection = prompt("Enter lookup value (e.g. Event ID 4624):");
-        }
-        if (!selection) {
-            return;
-        }
+javascript:(function() {
+  // Get user input from selection or prompt
+  let input = (window.getSelection ? String(window.getSelection()).trim() : "") || prompt("Enter lookup value (Event ID, IP, domain, hash, case ID or range)");
+  if (!input) return;
+  input = input.trim();
 
-        var dataURL = "https://raw.githubusercontent.com/BougiDim/SOC-Automation/main/info-database";
+  const digitsOnly = input.replace(/\D/g, "");
 
-        var response = await fetch(dataURL, {
-            cache: "no-cache"
-        });
-        if (!response.ok) {
-            throw new Error("HTTP " + response.status);
-        }
+  // Dictionary for known Event IDs
+  const socDictionary = {
+    "4624": "An account was successfully logged on. Useful for spotting normal vs. suspicious logons.",
+    "4625": "An account failed to log on. Commonly linked to brute force attempts or misconfigurations.",
+    "4634": "An account was logged off.",
+    "4648": "A logon was attempted using explicit credentials (e.g. runas).",
+    "4688": "A new process has been created. Critical for tracking execution chains.",
+    "4689": "A process has exited.",
+    "4672": "Special privileges were assigned to a new logon. Watch for admin or service accounts.",
+    "4776": "The domain controller attempted to validate the credentials for an account."
+  };
 
-        var data = await response.json();
+  // Helper: Show popup message
+  function showPopup(message) {
+    const popup = document.createElement("div");
+    popup.style = "position:fixed;top:10%;left:50%;transform:translateX(-50%);background:#1e1e1e;color:#fff;padding:15px;border:2px solid #888;border-radius:8px;z-index:999999;font-family:monospace;max-width:480px;white-space:pre-wrap;";
+    popup.textContent = message + "\n\n(click to close)";
+    popup.onclick = () => popup.remove();
+    document.body.appendChild(popup);
+  }
 
-        var key = selection;
-        var digits = selection.match(/\d+/);
-        if (digits && digits.length) {
-            key = digits[0];
-        }
-
-        if (!data[key]) {
-            var lowerSelection = selection.toLowerCase();
-            var match = Object.keys(data).find(function(k){
-                return k.toLowerCase() === lowerSelection;
-            });
-            if (match) {
-                key = match;
-            }
-        }
-
-        var answer = data[key];
-        if (!answer) {
-            answer = "No entry found for: " + selection;
-        }
-
-        var existing = document.getElementById("soc-lookup-popup");
-        if (existing) {
-            existing.remove();
-        }
-
-        var div = document.createElement("div");
-        div.id = "soc-lookup-popup";
-        div.style.position = "fixed";
-        div.style.top = "10%";
-        div.style.left = "50%";
-        div.style.transform = "translateX(-50%)";
-        div.style.background = "#1e1e1e";
-        div.style.color = "#fff";
-        div.style.padding = "15px";
-        div.style.border = "2px solid #888";
-        div.style.borderRadius = "8px";
-        div.style.zIndex = 2147483647;
-        div.style.fontFamily = "monospace";
-        div.style.maxWidth = "80vw";
-        div.style.wordBreak = "break-word";
-        div.style.boxShadow = "0 6px 18px rgba(0,0,0,0.4)";
-        div.innerText = selection + " → " + answer;
-        div.title = "Click to dismiss";
-
-        div.onclick = function(){ div.remove(); };
-        document.body.appendChild(div);
-        setTimeout(function(){ if (div.parentNode) { div.remove(); } }, 10000);
-    } catch (err) {
-        console.error("SOC lookup bookmarklet error", err);
-        alert("Error fetching dictionary: " + err.message);
+  // Case 1: Range of numbers (e.g. "5-10" or "5 10")
+  if (/^\d+\s*[-\s]\s*\d+$/.test(input)) {
+    let parts = input.split(/[-\s]+/);
+    let start = parseInt(parts[0]), end = parseInt(parts[1]);
+    if (isNaN(start) || isNaN(end)) {
+      console.log("Please enter valid numbers");
+      return;
     }
+    if (start >= end) {
+      console.log("Starting number cannot be larger than ending number");
+      return;
+    }
+    let range = [];
+    for (let i = start; i <= end; i++) range.push(i);
+    console.log(range.join(", "));
+    navigator.clipboard.writeText(range.join(", "))
+      .then(() => console.log("Copied to clipboard"))
+      .catch(err => console.log("Failed to copy: " + err));
+  }
+
+  // Case 2: Event ID (4-digit number)
+  else if (/^\d{4}$/.test(input)) {
+    const description = socDictionary[input] || `No entry found for Event ID ${input}`;
+    showPopup(`[Event ID] ${input} → ${description}`);
+  }
+
+  // Case 3: Case ID (6-digit number)
+  else if (/^\d{6}$/.test(digitsOnly)) {
+    window.open(`https://xsoar.group.euroclear.com/#/incident/${digitsOnly}`, "_blank");
+  }
+
+  // Case 4: IP address
+  else if (/^(\d{1,3}\.){3}\d{1,3}$/.test(input)) {
+    window.open(`https://www.virustotal.com/gui/ip-address/${input}`, "_blank");
+  }
+
+  // Case 5: Domain name
+  else if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(input)) {
+    window.open(`https://www.virustotal.com/gui/domain/${input}`, "_blank");
+  }
+
+  // Case 6: Hash (MD5/SHA1/SHA256)
+  else if (/^[a-fA-F0-9]{32,}$/.test(input)) {
+    window.open(`https://www.virustotal.com/gui/file/${input}`, "_blank");
+  }
+
+  // Default: Unrecognized input
+  else {
+    showPopup(`Unrecognized input: '${input}' (length ${input.length})`);
+  }
 })();
+
+
